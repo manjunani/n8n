@@ -35,7 +35,7 @@ export const getWorkflowHistory = async (
 	return data;
 };
 
-export const getWorkflowVersion = async (
+export const getWorkflowHistoryVersion = async (
 	context: IRestApiContext,
 	workflowId: string,
 	versionId: string,

@@ -20,6 +20,7 @@ export * from './ui';
 export * from './users';
 export * from './versions';
 export * from './webhooks';
-export * from './workflowHistory';
+export type * from './workflowHistory';
+export { getWorkflowHistory, getWorkflowHistoryVersion } from './workflowHistory';
 export * from './workflowVersions';
 export type * from './workflows';

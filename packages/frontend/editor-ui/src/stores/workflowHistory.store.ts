@@ -37,7 +37,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		versionId: string,
 	): Promise<WorkflowVersion> =>
-		await whApi.getWorkflowVersion(rootStore.restApiContext, workflowId, versionId);
+		await whApi.getWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId);
 
 	const downloadVersion = async (
 		workflowId: string,
