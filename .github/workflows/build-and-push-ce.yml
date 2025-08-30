@@ -1,0 +1,127 @@
+name: Build and Push n8n CE Image
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build n8n artifact (compiled)
+        run: pnpm build:n8n
+
+      - name: Set image tags
+        id: meta
+        run: |
+          OWNER=${{ github.repository_owner }}
+          IMAGE=ghcr.io/${OWNER}/n8n-ce
+          SHA_TAG=${{ github.sha }}
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION_TAG=${{ github.ref_name }}
+          else
+            VERSION_TAG=dev-${SHA_TAG::7}
+          fi
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/images/n8n/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+          build-args: |
+            N8N_VERSION=${{ steps.meta.outputs.version }}
+
+      - name: Summary
+        run: |
+          echo "Pushed ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Prepare env file content
+        id: env
+        run: |
+          cat > .env << EOF
+          N8N_HOST=${{ secrets.N8N_HOST }}
+          N8N_IMAGE=${{ needs.build.outputs.image }}:${{ needs.build.outputs.version }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          GENERIC_TIMEZONE=${{ secrets.GENERIC_TIMEZONE || 'UTC' }}
+          EOF
+          echo "done=1" >> $GITHUB_OUTPUT
+
+      - name: Copy compose + env to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          source: |
+            deploy/hostinger/docker-compose.yml
+            .env
+          target: /opt/n8n
+          overwrite: true
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            set -e
+            mkdir -p /opt/n8n
+            cd /opt/n8n
+            echo "Logging into GHCR..."
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+            echo "Pulling image ${{ needs.build.outputs.image }}:${{ needs.build.outputs.version }}"
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+            docker compose ps

@@ -21,4 +21,5 @@ export * from './users';
 export * from './versions';
 export * from './webhooks';
 export * from './workflowHistory';
+export * from './workflowVersions';
 export type * from './workflows';

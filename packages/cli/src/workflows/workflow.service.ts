@@ -10,6 +10,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { LicenseState } from '@n8n/backend-common';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -40,6 +41,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
+import { WorkflowVersionCeService } from './versioning.ce/workflow-version.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()
@@ -53,6 +55,7 @@ export class WorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowVersionCeService: WorkflowVersionCeService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
@@ -63,6 +66,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async getMany(
@@ -324,6 +328,14 @@ export class WorkflowService {
 
 		if (workflowUpdateData.versionId !== workflow.versionId) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
+			// CE fallback when EE history is not licensed
+			if (!this.licenseState.isWorkflowHistoryLicensed()) {
+				await this.workflowVersionCeService.saveSnapshot(
+					user,
+					workflowUpdateData,
+					workflowId,
+				);
+			}
 		}
 
 		const relations = tagsDisabled ? [] : ['tags'];

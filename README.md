@@ -39,6 +39,7 @@ Access the editor at http://localhost:5678
 - 🤖 [AI & LangChain Guide](https://docs.n8n.io/langchain/)
 - 👥 [Community Forum](https://community.n8n.io)
 - 📖 [Community Tutorials](https://community.n8n.io/c/tutorials/28)
+- 📝 CE Workflow Versioning: See deploy/hostinger/README.md for deployment and the CE versions API in this repo (list/get/restore under `/rest/workflows/:id/versions`).
 
 ## Support
 

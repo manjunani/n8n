@@ -62,6 +62,7 @@ const SettingsSourceControl = async () => await import('./views/SettingsSourceCo
 const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
+const WorkflowVersionsCe = async () => await import('@/views/WorkflowVersionsCe.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
 const EvaluationRootView = async () =>
@@ -85,7 +86,18 @@ export const routes: RouteRecordRaw[] = [
 		redirect: '/home/workflows',
 		meta: {
 			middleware: ['authenticated'],
-		},
+  },
+  {
+    path: '/workflow/:workflowId/versions/:versionId?',
+    name: 'WORKFLOW_VERSIONS_CE',
+    components: {
+      default: WorkflowVersionsCe,
+      sidebar: MainSidebar,
+    },
+    meta: {
+      middleware: ['authenticated'],
+    },
+  },
 	},
 	{
 		path: '/collections/:id',

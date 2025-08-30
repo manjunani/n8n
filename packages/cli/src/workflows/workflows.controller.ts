@@ -39,6 +39,8 @@ import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowVersionCeService } from '@/workflows/versioning.ce/workflow-version.service';
+import { LicenseState } from '@n8n/backend-common';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
@@ -73,6 +75,8 @@ export class WorkflowsController {
 		private readonly tagRepository: TagRepository,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowVersionCeService: WorkflowVersionCeService,
+		private readonly licenseState: LicenseState,
 		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -198,6 +202,11 @@ export class WorkflowsController {
 		}
 
 		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
+
+		// CE fallback: if EE history is not licensed, persist snapshot
+		if (!this.licenseState.isWorkflowHistoryLicensed()) {
+			await this.workflowVersionCeService.saveSnapshot(req.user, savedWorkflow, savedWorkflow.id);
+		}
 
 		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {

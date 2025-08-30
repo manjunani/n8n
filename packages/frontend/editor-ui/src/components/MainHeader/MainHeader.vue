@@ -80,12 +80,23 @@ const isTelemetryEnabled = computed((): boolean => {
 	return settingsStore.isTelemetryEnabled;
 });
 const showGitHubButton = computed(
-	() =>
-		!isEnterprise.value &&
-		!settingsStore.settings.inE2ETests &&
-		!githubButtonHidden.value &&
-		isTelemetryEnabled.value,
+    () =>
+        !isEnterprise.value &&
+        !settingsStore.settings.inE2ETests &&
+        !githubButtonHidden.value &&
+        isTelemetryEnabled.value,
 );
+
+const canShowVersionsCe = computed(() => {
+    const hasWorkflow = Boolean(workflow.value?.id);
+    const eeHistoryEnabled = settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
+    return onWorkflowPage.value && hasWorkflow && !eeHistoryEnabled;
+});
+
+function goToVersionsCe() {
+    if (!workflow.value?.id) return;
+    void router.push({ name: 'WORKFLOW_VERSIONS_CE', params: { workflowId: workflow.value.id } });
+}
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
 	if (!workflow.value.parentFolder) {
@@ -250,8 +261,8 @@ function hideGithubButton() {
 		<div
 			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
 		>
-			<div v-show="!hideMenuBar" :class="$style['top-menu']">
-				<WorkflowDetails
+            <div v-show="!hideMenuBar" :class="$style['top-menu']">
+                <WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
 					:tags="workflow.tags"
@@ -262,9 +273,12 @@ function hideGithubButton() {
 					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
-				/>
-				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
-					<div :class="$style['github-button-container']">
+                />
+                <div v-if="canShowVersionsCe" :class="$style['versions-button']">
+                    <n8n-button size="small" @click="goToVersionsCe">Versions</n8n-button>
+                </div>
+                <div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
+                    <div :class="$style['github-button-container']">
 						<GithubButton
 							:href="N8N_MAIN_GITHUB_REPO_URL"
 							:data-color-scheme="uiStore.appliedTheme"
@@ -318,6 +332,13 @@ function hideGithubButton() {
 	font-weight: var(--font-weight-regular);
 	overflow-x: auto;
 	overflow-y: hidden;
+}
+
+.versions-button {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--spacing-m);
+    border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
 .github-button {
