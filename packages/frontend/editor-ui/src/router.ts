@@ -86,18 +86,18 @@ export const routes: RouteRecordRaw[] = [
 		redirect: '/home/workflows',
 		meta: {
 			middleware: ['authenticated'],
-  },
-  {
-    path: '/workflow/:workflowId/versions/:versionId?',
-    name: 'WORKFLOW_VERSIONS_CE',
-    components: {
-      default: WorkflowVersionsCe,
-      sidebar: MainSidebar,
-    },
-    meta: {
-      middleware: ['authenticated'],
-    },
-  },
+		},
+	},
+	{
+		path: '/workflow/:workflowId/versions/:versionId?',
+		name: 'WORKFLOW_VERSIONS_CE',
+		components: {
+			default: WorkflowVersionsCe,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
 	},
 	{
 		path: '/collections/:id',
